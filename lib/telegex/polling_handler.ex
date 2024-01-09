@@ -16,6 +16,14 @@ defmodule Ieltsin.Telegex.PollingHandler do
     message.from.id |> Users.get_by_tg_id() |> handle_message(message)
   end
 
+  def on_update(%{callback_query: %{data: "+15;" <> user_id}}) do
+    user_id |> inspect() |> Logger.info()
+  end
+
+  def on_update(%{callback_query: %{data: "-15;" <> user_id}}) do
+    user_id |> inspect() |> Logger.info()
+  end
+
   @impl true
   def on_update(%Telegex.Type.Update{} = update) do
     Logger.info("on_update: unknown update: #{inspect(update)}")
@@ -34,8 +42,24 @@ defmodule Ieltsin.Telegex.PollingHandler do
     Logger.error("progress is nil for some reason")
   end
 
-  defp handle_message(progress, _user, message) do
-    {:ok, _message} = message.chat.id |> Telegex.send_message(progress |> create_message())
+  defp handle_message(progress, user, message) do
+    {:ok, _message} =
+      Telegex.send_message(
+        message.chat.id,
+        progress |> create_message(),
+        reply_markup: user.id |> build_reply_markup()
+      )
+  end
+
+  defp build_reply_markup(user_id) do
+    %Telegex.Type.InlineKeyboardMarkup{
+      inline_keyboard: [
+        [
+          %Telegex.Type.InlineKeyboardButton{text: "+15 minutes", callback_data: "+15;#{user_id}"}
+        ],
+        [%Telegex.Type.InlineKeyboardButton{text: "-15 minutes", callback_data: "-15;#{user_id}"}]
+      ]
+    }
   end
 
   defp create_message(%{quarters_left: quarters}) do
