@@ -19,13 +19,33 @@ defmodule Ieltsin.Telegex.PollingHandler do
   @impl true
   def on_update(%{callback_query: %{data: "+15;" <> user_id} = q}) do
     {:ok, progress} = user_id |> Progresses.increase()
-    progress |> update_message(q, user_id)
+
+    progress
+    |> send_message(q.message.chat.id)
   end
 
   @impl true
   def on_update(%{callback_query: %{data: "-15;" <> user_id} = q}) do
     {:ok, progress} = user_id |> Progresses.reduce()
-    progress |> update_message(q, user_id)
+
+    progress
+    |> send_message(q.message.chat.id)
+  end
+
+  @impl true
+  def on_update(%{callback_query: %{data: "-30;" <> user_id} = q}) do
+    {:ok, progress} = user_id |> Progresses.reduce(2)
+
+    progress
+    |> send_message(q.message.chat.id)
+  end
+
+  @impl true
+  def on_update(%{callback_query: %{data: "-60;" <> user_id} = q}) do
+    {:ok, progress} = user_id |> Progresses.reduce(4)
+
+    progress
+    |> send_message(q.message.chat.id)
   end
 
   @impl true
@@ -47,21 +67,26 @@ defmodule Ieltsin.Telegex.PollingHandler do
   end
 
   defp handle_message(progress, _user, %{chat: %{id: chat_id}}) do
-    {:ok, _message} =
-      Telegex.send_message(
-        chat_id,
-        progress |> create_message(),
-        reply_markup: progress.user_id |> build_reply_markup()
-      )
+    {:ok, _message} = progress |> send_message(chat_id)
   end
 
   defp build_reply_markup(user_id) do
     %Telegex.Type.InlineKeyboardMarkup{
       inline_keyboard: [
         [
-          %Telegex.Type.InlineKeyboardButton{text: "+15 minutes", callback_data: "+15;#{user_id}"}
+          %Telegex.Type.InlineKeyboardButton{
+            text: "+15 minutes",
+            callback_data: "+15;#{user_id}"
+          },
+          %Telegex.Type.InlineKeyboardButton{text: "-15 minutes", callback_data: "-15;#{user_id}"}
         ],
-        [%Telegex.Type.InlineKeyboardButton{text: "-15 minutes", callback_data: "-15;#{user_id}"}]
+        [
+          %Telegex.Type.InlineKeyboardButton{
+            text: "-30 minutes",
+            callback_data: "-30;#{user_id}"
+          },
+          %Telegex.Type.InlineKeyboardButton{text: "-1 hour", callback_data: "-60;#{user_id}"}
+        ]
       ]
     }
   end
@@ -72,13 +97,12 @@ defmodule Ieltsin.Telegex.PollingHandler do
     "You have to train your English for #{hours} hours and #{minutes} minutes more"
   end
 
-  defp update_message(progress, q, user_id) do
-    progress
-    |> create_message()
-    |> Telegex.edit_message_text(
-      message_id: q.message.message_id,
-      chat_id: q.message.chat.id,
-      reply_markup: build_reply_markup(user_id)
-    )
+  defp send_message(progress, chat_id) do
+    {:ok, _} =
+      Telegex.send_message(
+        chat_id,
+        progress |> create_message(),
+        reply_markup: progress.user_id |> build_reply_markup()
+      )
   end
 end
