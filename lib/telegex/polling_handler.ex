@@ -16,12 +16,16 @@ defmodule Ieltsin.Telegex.PollingHandler do
     message.from.id |> Users.get_by_tg_id() |> handle_message(message)
   end
 
-  def on_update(%{callback_query: %{data: "+15;" <> user_id}}) do
-    user_id |> inspect() |> Logger.info()
+  @impl true
+  def on_update(%{callback_query: %{data: "+15;" <> user_id} = q}) do
+    {:ok, progress} = user_id |> Progresses.increase()
+    progress |> update_message(q, user_id)
   end
 
-  def on_update(%{callback_query: %{data: "-15;" <> user_id}}) do
-    user_id |> inspect() |> Logger.info()
+  @impl true
+  def on_update(%{callback_query: %{data: "-15;" <> user_id} = q}) do
+    {:ok, progress} = user_id |> Progresses.reduce()
+    progress |> update_message(q, user_id)
   end
 
   @impl true
@@ -42,12 +46,12 @@ defmodule Ieltsin.Telegex.PollingHandler do
     Logger.error("progress is nil for some reason")
   end
 
-  defp handle_message(progress, user, message) do
+  defp handle_message(progress, _user, %{chat: %{id: chat_id}}) do
     {:ok, _message} =
       Telegex.send_message(
-        message.chat.id,
+        chat_id,
         progress |> create_message(),
-        reply_markup: user.id |> build_reply_markup()
+        reply_markup: progress.user_id |> build_reply_markup()
       )
   end
 
@@ -66,5 +70,15 @@ defmodule Ieltsin.Telegex.PollingHandler do
     hours = div(quarters, 4)
     minutes = rem(quarters, 4) * 15
     "You have to train your English for #{hours} hours and #{minutes} minutes more"
+  end
+
+  defp update_message(progress, q, user_id) do
+    progress
+    |> create_message()
+    |> Telegex.edit_message_text(
+      message_id: q.message.message_id,
+      chat_id: q.message.chat.id,
+      reply_markup: build_reply_markup(user_id)
+    )
   end
 end
