@@ -21,7 +21,7 @@ defmodule Ieltsin.Telegex.PollingHandler do
   end
 
   defp handle_message(nil, message) do
-    {:ok, user} = message.from.id |> Users.create()
+    {:ok, %{user: user}} = message.from.id |> Users.create()
     handle_message(user, message)
   end
 
