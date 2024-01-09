@@ -7,3 +7,5 @@ config :ieltsin, Ieltsin.Repo,
   hostname: System.get_env("IELTSIN_DB_HOSTNAME")
 
 config :ieltsin, ecto_repos: [Ieltsin.Repo]
+
+config :telegex, token: System.get_env("IELTSIN_TG_BOT_KEY")
