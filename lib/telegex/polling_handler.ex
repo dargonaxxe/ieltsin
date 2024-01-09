@@ -1,4 +1,5 @@
 defmodule Ieltsin.Telegex.PollingHandler do
+  alias Ieltsin.Domain.Progresses
   alias Ieltsin.Domain.Users
   use Telegex.Polling.GenHandler
   require Logger
@@ -25,7 +26,21 @@ defmodule Ieltsin.Telegex.PollingHandler do
     handle_message(user, message)
   end
 
-  defp handle_message(_, message) do
-    Logger.info("handle_message: #{inspect(message)}")
+  defp handle_message(user, message) do
+    user.id |> Progresses.get_by_user_id() |> handle_message(user, message)
+  end
+
+  defp handle_message(nil, _user, _message) do
+    Logger.error("progress is nil for some reason")
+  end
+
+  defp handle_message(progress, _user, message) do
+    {:ok, _message} = message.chat.id |> Telegex.send_message(progress |> create_message())
+  end
+
+  defp create_message(%{quarters_left: quarters}) do
+    hours = div(quarters, 4)
+    minutes = rem(quarters, 4) * 15
+    "You have to train your English for #{hours} hours and #{minutes} minutes more"
   end
 end
