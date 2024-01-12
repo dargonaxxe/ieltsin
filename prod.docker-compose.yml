@@ -1,0 +1,31 @@
+version: "3.7"
+volumes: 
+  pg_volume: 
+services: 
+  database:
+    image: postgres:16.1-alpine
+    volumes: 
+      - type: volume 
+        source: pg_volume 
+        target: /var/lib/postgresql/data/pgdata
+    hostname: ${IELTSIN_DB_HOSTNAME}
+    environment: 
+      POSTGRES_PASSWORD: ${IELTSIN_DB_PASSWORD}
+      POSTGRES_USER: ${IELTSIN_DB_USERNAME}
+      POSTGRES_DB: ${IELTSIN_DB_NAME}
+      PGDATA: /var/lib/postgresql/data/pgdata
+
+  ieltsin:
+    build: 
+      context: ./
+      dockerfile: prod.Dockerfile
+    depends_on:
+      - database
+    environment: 
+      IELTSIN_DB_NAME: ${IELTSIN_DB_NAME}
+      IELTSIN_DB_USERNAME: ${IELTSIN_DB_USERNAME}
+      IELTSIN_DB_PASSWORD: ${IELTSIN_DB_PASSWORD}
+      IELTSIN_DB_HOSTNAME: ${IELTSIN_DB_HOSTNAME}
+      IELTSIN_TG_BOT_KEY: ${IELTSIN_TG_BOT_KEY}
+
+
